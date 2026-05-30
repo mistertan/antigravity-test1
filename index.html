@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VerifyDrive // Secure Google Drive KYC Processor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- ==========================================
+         SIDEBAR NAVIGATION
+         ========================================== -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <span>VerifyDrive</span>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-target="dashboard">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </div>
+        
+        <div class="nav-item" data-target="workbench">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          KYC Workbench
+        </div>
+        
+        <div class="nav-item" data-target="reports">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          KYC Reports
+        </div>
+        
+        <div class="nav-item" data-target="settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Settings & APIs
+        </div>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="connection-pill sandbox" id="connection-status-pill">
+          <div class="connection-dot"></div>
+          <div class="connection-info">
+            <span class="connection-label" id="connection-status-label">Sandbox Mode</span>
+            <span class="connection-sub" id="connection-status-sub">Mocking Drive Files</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         MAIN INTERFACE AREA
+         ========================================== -->
+    <main class="main-content">
+      
+      <!-- Top header bar -->
+      <header class="app-header">
+        <div class="header-title">
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">Overview of verification requests and system metrics</p>
+        </div>
+        
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="auth-drive-btn" style="display: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Connect Drive
+          </button>
+          
+          <button class="btn btn-primary" id="workbench-header-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New KYC Review
+          </button>
+        </div>
+      </header>
+
+      <!-- ==========================================
+           PAGE VIEW: DASHBOARD
+           ========================================== -->
+      <section class="page-view active" id="view-dashboard">
+        
+        <!-- Numerical Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stats-total-cases">2</span>
+              <span class="stat-label">Active KYC Cases</span>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stats-verified-docs">0</span>
+              <span class="stat-label">Verified Documents</span>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stats-pending-slots">5</span>
+              <span class="stat-label">Pending Verification Slots</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layout splits -->
+        <div class="dashboard-layout">
+          <!-- Cases list -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">KYC Request Queue</h2>
+            </div>
+            
+            <div class="case-list" id="dashboard-case-queue">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+          
+          <!-- Quick Guidelines -->
+          <div class="section-card">
+            <div class="section-header">
+              <h2 class="section-title">Verification Steps</h2>
+            </div>
+            
+            <div style="font-size: 14px; color: var(--text-secondary); display:flex; flex-direction:column; gap:16px;">
+              <p>VerifyDrive streamlines KYC by directly referencing compliant documents residing in Google Drive.</p>
+              <ol style="margin-left: 20px; display:flex; flex-direction:column; gap:8px;">
+                <li>Select a customer request case from the queue.</li>
+                <li>Connect Google Drive or keep <strong>Sandbox Mode</strong> active.</li>
+                <li>Assign relevant PDF documents to the slots (Identity, Address, Income).</li>
+                <li>Extract, audit, and approve the document values.</li>
+                <li>Generate and copy the KYC compliant markdown report.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           PAGE VIEW: KYC WORKBENCH
+           ========================================== -->
+      <section class="page-view" id="view-workbench">
+        <div class="workbench-layout">
+          
+          <!-- Left Slots Panel -->
+          <div class="document-slots-container">
+            <div class="workbench-case-card">
+              <div class="workbench-case-header">Current Case</div>
+              <div class="workbench-case-title" id="wb-case-name">Select a Case</div>
+              <div class="workbench-case-risk" id="wb-case-risk">-</div>
+              
+              <div class="slots-list" id="wb-slots-list">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+            
+            <button class="btn btn-secondary" id="wb-back-dashboard-btn" style="width: 100%;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"/>
+                <polyline points="12 19 5 12 12 5"/>
+              </svg>
+              Back to Queue
+            </button>
+          </div>
+          
+          <!-- Right main processor workbench -->
+          <div class="workbench-main-panel" id="workbench-empty-panel">
+            <div class="workbench-empty-state">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="9" x2="15" y2="9"/>
+                <line x1="9" y1="13" x2="15" y2="13"/>
+                <line x1="9" y1="17" x2="11" y2="17"/>
+              </svg>
+              <h3>Select a slot to start</h3>
+              <p>Choose a required document from the left list to review, assign, or edit verification details.</p>
+            </div>
+          </div>
+          
+          <div class="workbench-main-panel" id="workbench-editor-panel" style="display: none;">
+            <div class="workbench-detail-header">
+              <div>
+                <div class="slot-detail-title" id="editor-slot-title">Proof of Identity</div>
+                <div class="slot-detail-desc" id="editor-slot-desc">Upload or link your valid government issued document.</div>
+              </div>
+              <div id="editor-slot-status-badge">
+                <!-- Status Badge -->
+              </div>
+            </div>
+            
+            <div class="document-processor-split">
+              <!-- Left Sandbox Document visualizer -->
+              <div class="document-viewer-container">
+                <div class="document-meta-info">
+                  <span id="editor-file-status">No PDF Assigned</span>
+                  <a href="#" target="_blank" id="editor-google-drive-link" style="display: none;">Open original</a>
+                </div>
+                
+                <!-- Visual simulation for sandbox PDFs -->
+                <div class="document-sandbox-viewer" id="sandbox-pdf-viewer">
+                  <div class="sandbox-doc-header">
+                    <div class="sandbox-doc-logo" id="sb-doc-issuer">VERIFYDRIVE SANDBOX</div>
+                    <div class="sandbox-doc-stamp">KYC REVIEW DOCUMENT</div>
+                  </div>
+                  <div class="sandbox-doc-title" id="sb-doc-title">Select Document</div>
+                  
+                  <div id="sb-doc-body-fields">
+                    <!-- Standard placeholder doc body -->
+                    <div class="sandbox-doc-field">
+                      <div class="sandbox-doc-field-label">Document Status</div>
+                      <div class="sandbox-doc-field-value" style="color: #64748b; font-style: italic;">Please link a PDF file using the explorer widget.</div>
+                    </div>
+                  </div>
+                  
+                  <div class="sandbox-doc-footer">
+                    <span>SECURITY DOCUMENT LEVEL: sandbox-tier</span>
+                    <span id="sb-doc-footer-id">REV#9999</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Right Input Review Form -->
+              <div class="document-verification-form">
+                <!-- Google Drive Assign Actions -->
+                <div class="settings-group" id="file-link-action-container">
+                  <span class="form-label">Link Document</span>
+                  <button class="btn btn-primary btn-icon" id="trigger-drive-explorer-btn" style="width: 100%;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="12" y1="8" x2="12" y2="16"/>
+                      <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    Browse Google Drive PDFs
+                  </button>
+                </div>
+                
+                <!-- AI analysis segment -->
+                <div class="ai-action-card" id="ai-extract-card" style="display: none;">
+                  <div class="ai-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pulse">
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    </svg>
+                    Automated Verification Engine
+                  </div>
+                  <div class="ai-card-desc">
+                    Extract document information using mock AI OCR to verify details.
+                  </div>
+                  <button class="btn btn-secondary" id="run-mock-ocr-btn">Run AI OCR Extraction</button>
+                  
+                  <div class="progress-container" id="ocr-progress-container">
+                    <div class="progress-bar" id="ocr-progress-bar"></div>
+                  </div>
+                </div>
+                
+                <!-- Extraction Forms -->
+                <div id="kyc-doc-fields-group" style="display: none;">
+                  <div class="form-group-title">Verify Extracted Fields</div>
+                  <div class="form-grid" id="kyc-fields-form-grid" style="margin-top: 14px;">
+                    <!-- Appended dynamically based on document slots (Identity vs Utility bill etc) -->
+                  </div>
+                </div>
+                
+                <!-- Action Rows -->
+                <div class="action-row">
+                  <button class="btn btn-secondary" id="unlink-document-btn" style="display: none; margin-right: auto; color: var(--color-error); border-color: var(--color-error-border);">
+                    Unlink
+                  </button>
+                  <button class="btn btn-secondary" id="editor-cancel-btn">Cancel</button>
+                  <button class="btn btn-success" id="editor-approve-btn" style="display: none;">Approve & Verify</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           PAGE VIEW: REPORTS
+           ========================================== -->
+      <section class="page-view" id="view-reports">
+        <div class="report-viewer-card">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">KYC Compliance Report Output</h2>
+              <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;" id="reports-case-label">Select and complete a case to generate a compliance report.</p>
+            </div>
+            
+            <div class="explorer-actions" id="report-controls" style="display: none;">
+              <button class="btn btn-secondary" id="report-copy-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Copy Report
+              </button>
+              
+              <button class="btn btn-primary" id="report-download-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download TXT
+              </button>
+            </div>
+          </div>
+          
+          <div class="report-text-container" id="report-output-box">No KYC report generated yet. Select an active case in the KYC Workbench, link & verify all required documents, then click "Generate KYC Report".</div>
+        </div>
+      </section>
+
+      <!-- ==========================================
+           PAGE VIEW: SETTINGS & CONFIGS
+           ========================================== -->
+      <section class="page-view" id="view-settings">
+        <div class="section-card" style="max-width: 750px;">
+          <div class="section-header" style="border-bottom: 1px solid var(--border-color); padding-bottom:16px;">
+            <h2 class="section-title">Google Drive API Configuration</h2>
+          </div>
+          
+          <div class="settings-grid">
+            
+            <div class="settings-toggle-container">
+              <div class="toggle-info">
+                <span class="toggle-label">Sandbox Mock Mode</span>
+                <span class="toggle-desc">Simulate document explorer navigation and parsing using standard sample documents. No Google credentials required.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="settings-sandbox-toggle" checked>
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            
+            <div id="live-api-settings" style="display: none; flex-direction: column; gap: 20px;">
+              <div class="settings-group">
+                <label class="form-label" for="settings-client-id">Google OAuth 2.0 Client ID</label>
+                <input type="text" class="form-input" id="settings-client-id" placeholder="e.g. xxxxxxxx-xxxxxxxx.apps.googleusercontent.com">
+                <span style="font-size: 11px; color: var(--text-muted);">Required for OAuth web-client sign-in popup. Note: callback origins must contain your current local URL.</span>
+              </div>
+              
+              <div class="settings-group">
+                <label class="form-label" for="settings-api-key">Google Developer API Key</label>
+                <input type="password" class="form-input" id="settings-api-key" placeholder="API Key for accessing file structures">
+                <span style="font-size: 11px; color: var(--text-muted);">Used alongside GIS authentication for querying Drive files.</span>
+              </div>
+              
+              <div class="settings-group">
+                <label class="form-label" for="settings-access-token">OAuth 2.0 Access Token (Direct Paste Fallback)</label>
+                <input type="password" class="form-input" id="settings-access-token" placeholder="Paste an active OAuth access token">
+                <span style="font-size: 11px; color: var(--text-muted);">Recommended for simple local testing (e.g. copy from Google OAuth Playground with Drive scopes). Avoids configuring API Key and Client ID origins.</span>
+              </div>
+            </div>
+
+            <div class="action-row" style="margin-top: 10px; border: none; padding: 0;">
+              <button class="btn btn-primary" id="save-settings-btn">Save Configuration</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ==========================================
+       MODAL DIALOG: GOOGLE DRIVE EXPLORER
+       ========================================== -->
+  <div class="modal-overlay" id="drive-explorer-modal">
+    <div class="modal-window">
+      
+      <div class="modal-header">
+        <span class="modal-title">Google Drive Explorer</span>
+        <button class="modal-close-btn" id="explorer-close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="explorer-search-bar">
+        <input type="text" class="explorer-search-input" id="explorer-search-field" placeholder="Search Google Drive for PDF documents...">
+      </div>
+      
+      <div class="explorer-breadcrumbs" id="explorer-crumbs">
+        <!-- breadcrumbs dynamically generated -->
+      </div>
+      
+      <div class="explorer-files-container">
+        <div class="explorer-files-grid" id="explorer-files-grid">
+          <!-- Loaded folders / files -->
+        </div>
+      </div>
+      
+      <div class="explorer-footer">
+        <div class="explorer-selected-text" id="explorer-selection-summary">No PDF document selected</div>
+        <div class="explorer-actions">
+          <button class="btn btn-secondary" id="explorer-cancel-btn">Cancel</button>
+          <button class="btn btn-primary" id="explorer-confirm-btn" disabled>Select File</button>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Toast Notification Wrapper -->
+  <div class="toast-container" id="global-toast-container"></div>
+
+  <!-- Main scripts -->
+  <script src="drive-client.js"></script>
+  <script src="kyc-processor.js"></script>
+  <script src="ui-components.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
