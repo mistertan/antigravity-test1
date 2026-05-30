@@ -349,7 +349,7 @@ class DriveClient {
     }
 
     const fields = 'files(id, name, mimeType, size, modifiedTime, webViewLink)';
-    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&key=${this.apiKey || ''}`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}${this.apiKey ? `&key=${this.apiKey}` : ''}`;
 
     try {
       const response = await fetch(url, {
@@ -389,7 +389,7 @@ class DriveClient {
       throw new Error('Authentication required: Access Token not found.');
     }
 
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size,modifiedTime,webViewLink&key=${this.apiKey || ''}`;
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size,modifiedTime,webViewLink${this.apiKey ? `&key=${this.apiKey}` : ''}`;
 
     try {
       const response = await fetch(url, {
@@ -543,9 +543,8 @@ class DriveClient {
       return resolvedNameOrId;
     }
 
-    // Step 1: Query by exact name & folder mimetype if it looks like a folder name
     const q = `name = '${resolvedNameOrId.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&key=${this.apiKey || ''}`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)${this.apiKey ? `&key=${this.apiKey}` : ''}`;
 
     try {
       const response = await fetch(url, {
@@ -606,7 +605,7 @@ class DriveClient {
 
     const q = `'${resolvedFolderId}' in parents and mimeType = 'application/pdf' and trashed = false`;
     const fields = 'files(id, name, mimeType, size, modifiedTime, webViewLink)';
-    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&key=${this.apiKey || ''}`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}${this.apiKey ? `&key=${this.apiKey}` : ''}`;
 
     const response = await fetch(url, {
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
