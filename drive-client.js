@@ -234,12 +234,14 @@ class DriveClient {
    * Disconnect authentication state.
    */
   disconnect() {
-    if (this.accessToken && window.google) {
-      window.google.accounts.oauth2.revokeToken(this.accessToken, () => {
-        this.accessToken = null;
-      });
-    } else {
-      this.accessToken = null;
+    const tokenToRevoke = this.accessToken;
+    this.accessToken = null;
+    if (tokenToRevoke && window.google && window.google.accounts && window.google.accounts.oauth2) {
+      try {
+        window.google.accounts.oauth2.revokeToken(tokenToRevoke, () => {});
+      } catch (err) {
+        console.warn('Failed to revoke Google token:', err);
+      }
     }
   }
 

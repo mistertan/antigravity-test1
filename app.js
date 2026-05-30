@@ -141,6 +141,8 @@ function registerNavHandlers() {
   document.getElementById('auth-drive-btn').addEventListener('click', () => {
     if (drive.accessToken) {
       drive.disconnect();
+      localStorage.removeItem('vd_access_token');
+      document.getElementById('settings-access-token').value = '';
       updateConnectionStatusUI();
       ui.showToast('Google Drive session disconnected.', 'warning');
     } else {
