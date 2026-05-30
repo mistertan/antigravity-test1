@@ -558,6 +558,54 @@
     </div>
   </div>
 
+  <!-- ==========================================
+       MODAL DIALOG: CREATE NEW KYC CASE
+       ========================================== -->
+  <div class="modal-overlay" id="create-case-modal">
+    <div class="modal-window" style="width: 460px; height: auto; max-height: 90vh;">
+      
+      <div class="modal-header">
+        <span class="modal-title">Create KYC Review Case</span>
+        <button class="modal-close-btn" id="create-case-close-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div style="padding: 24px 30px; display: flex; flex-direction: column; gap: 20px;">
+        <div class="settings-group">
+          <label class="form-label" for="new-case-name">Customer Full Name</label>
+          <input type="text" class="form-input" id="new-case-name" placeholder="e.g. Alice Johnson" style="width: 100%;">
+        </div>
+        
+        <div class="settings-group">
+          <label class="form-label" for="new-case-profile">Verification Profile</label>
+          <select class="form-input" id="new-case-profile" style="background-color: rgba(0,0,0,0.25); color: var(--text-primary); width: 100%;">
+            <option value="standard">Standard Verification (Identity & Address)</option>
+            <option value="enhanced">Enhanced Verification (Identity, Address, & Income)</option>
+          </select>
+        </div>
+        
+        <div class="settings-group">
+          <label class="form-label" for="new-case-risk">Risk Classification</label>
+          <select class="form-input" id="new-case-risk" style="background-color: rgba(0,0,0,0.25); color: var(--text-primary); width: 100%;">
+            <option value="Low Risk">Low Risk</option>
+            <option value="Medium Risk">Medium Risk</option>
+            <option value="High Risk">High Risk</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="explorer-footer" style="background-color: rgba(0,0,0,0.1); border-top: 1px solid var(--border-color); padding: 16px 30px; display: flex; justify-content: flex-end; gap: 12px;">
+        <button class="btn btn-secondary" id="create-case-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="create-case-confirm-btn">Create Case</button>
+      </div>
+      
+    </div>
+  </div>
+
   <!-- Toast Notification Wrapper -->
   <div class="toast-container" id="global-toast-container"></div>
 

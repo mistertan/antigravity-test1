@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   registerExplorerModalHandlers();
   registerReportHandlers();
   registerFolderViewHandlers();
+  registerCreateCaseHandlers();
   
   // Initial draw
   renderDashboardQueue();
@@ -170,13 +171,7 @@ function registerNavHandlers() {
 
   // Workbench Quick Launch Action
   document.getElementById('workbench-header-btn').addEventListener('click', () => {
-    const queue = processor.getCases();
-    // Default to the first pending case if we launch directly
-    if (queue.length > 0) {
-      activateKycCase(queue[0].id);
-    } else {
-      navigateToView('workbench');
-    }
+    openCreateCaseModal();
   });
 }
 
@@ -1079,4 +1074,56 @@ async function renderFolderViewScreen() {
     empty.querySelector('p').textContent = `Could not scan directory records: ${err.message}`;
     ui.showToast(`Folder scan failed: ${err.message}`, 'error');
   }
+}
+
+/**
+ * Open create case modal.
+ */
+function openCreateCaseModal() {
+  const modal = document.getElementById('create-case-modal');
+  modal.classList.add('active');
+  document.getElementById('new-case-name').value = '';
+  document.getElementById('new-case-profile').value = 'standard';
+  document.getElementById('new-case-risk').value = 'Low Risk';
+}
+
+/**
+ * Close create case modal.
+ */
+function closeCreateCaseModal() {
+  document.getElementById('create-case-modal').classList.remove('active');
+}
+
+/**
+ * Wire up click handlers and input controls for the create case modal form.
+ */
+function registerCreateCaseHandlers() {
+  document.getElementById('create-case-close-btn').addEventListener('click', closeCreateCaseModal);
+  document.getElementById('create-case-cancel-btn').addEventListener('click', closeCreateCaseModal);
+  
+  document.getElementById('create-case-confirm-btn').addEventListener('click', () => {
+    const nameInput = document.getElementById('new-case-name');
+    const name = nameInput.value.trim();
+    
+    if (!name) {
+      ui.showToast('Please enter the customer\'s full name.', 'warning');
+      return;
+    }
+    
+    const profile = document.getElementById('new-case-profile').value;
+    const risk = document.getElementById('new-case-risk').value;
+    
+    // Add case to compliance data database
+    const newCase = processor.addNewCase(name, profile, risk);
+    
+    ui.showToast(`KYC Review Case created for ${name}!`, 'success');
+    closeCreateCaseModal();
+    
+    // Refresh queue lists and metrics immediately
+    renderDashboardQueue();
+    updateStatsMetrics();
+    
+    // Jump straight to reviewing the brand new case!
+    activateKycCase(newCase.id);
+  });
 }

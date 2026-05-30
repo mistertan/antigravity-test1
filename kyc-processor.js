@@ -495,4 +495,61 @@ I hereby certify that the linked Google Drive metadata records have been parsed,
     
     return matchesFound;
   }
+
+  /**
+   * Adds a new KYC case to the local database.
+   */
+  addNewCase(name, profileType, riskLevel) {
+    const nextCaseId = `case-${Date.now()}`;
+    
+    // Set up standard slots
+    const slots = {
+      'slot-identity': {
+        id: 'slot-identity',
+        type: 'identity',
+        name: 'Government Photo ID',
+        desc: 'Valid Passport, Driver\'s License, or National ID Card.',
+        required: true,
+        file: null,
+        extractedData: null,
+        status: 'unassigned'
+      },
+      'slot-address': {
+        id: 'slot-address',
+        type: 'address',
+        name: 'Proof of Address',
+        desc: 'Utility bill or lease agreement issued in the last 90 days.',
+        required: true,
+        file: null,
+        extractedData: null,
+        status: 'unassigned'
+      }
+    };
+    
+    // Add income slot if enhanced verification
+    if (profileType === 'enhanced') {
+      slots['slot-income'] = {
+        id: 'slot-income',
+        type: 'income',
+        name: 'Proof of Income / Wealth',
+        desc: 'Recent W-2 form, paystub, or salary statement.',
+        required: true,
+        file: null,
+        extractedData: null,
+        status: 'unassigned'
+      };
+    }
+    
+    const newCase = {
+      id: nextCaseId,
+      name: name,
+      type: profileType === 'enhanced' ? 'Enhanced Verification (High-Net-Worth)' : 'Standard Verification',
+      riskLevel: riskLevel,
+      status: 'pending',
+      slots: slots
+    };
+    
+    this.cases[nextCaseId] = newCase;
+    return newCase;
+  }
 }
