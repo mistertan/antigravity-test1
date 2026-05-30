@@ -360,6 +360,9 @@ class DriveClient {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized (HTTP 401). Your Google OAuth Access Token has expired or is invalid. Please reconnect Drive or paste a fresh Access Token in Settings.');
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error?.message || `Drive API responded with HTTP ${response.status}`);
       }
@@ -400,6 +403,9 @@ class DriveClient {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized (HTTP 401). Your Google OAuth Access Token has expired or is invalid. Please reconnect Drive or paste a fresh Access Token in Settings.');
+        }
         throw new Error(`Failed to fetch file metadata: HTTP ${response.status}`);
       }
 
@@ -550,6 +556,9 @@ class DriveClient {
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
+      if (response.status === 401) {
+        throw new Error('Unauthorized (HTTP 401). Your Google OAuth Access Token has expired or is invalid. Please reconnect Drive or paste a fresh Access Token in Settings.');
+      }
       if (!response.ok) return 'root';
       const data = await response.json();
       if (data.files && data.files.length > 0) {
@@ -611,6 +620,9 @@ class DriveClient {
       headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
     });
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized (HTTP 401). Your Google OAuth Access Token has expired or is invalid. Please reconnect Drive or paste a fresh Access Token in Settings.');
+      }
       throw new Error(`Drive API responded with HTTP ${response.status}`);
     }
     const data = await response.json();
