@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   registerSettingsHandlers();
   registerExplorerModalHandlers();
   registerReportHandlers();
+  registerFolderViewHandlers();
   
   // Initial draw
   renderDashboardQueue();
@@ -55,12 +56,14 @@ function loadConfiguration() {
   const clientId = localStorage.getItem('vd_client_id') || '';
   const apiKey = localStorage.getItem('vd_api_key') || '';
   const token = localStorage.getItem('vd_access_token') || '';
+  const targetFolder = localStorage.getItem('vd_target_folder') || 'root';
 
   // Apply inputs to DOM
   document.getElementById('settings-sandbox-toggle').checked = sandbox;
   document.getElementById('settings-client-id').value = clientId;
   document.getElementById('settings-api-key').value = apiKey;
   document.getElementById('settings-access-token').value = token;
+  document.getElementById('settings-target-folder').value = targetFolder;
 
   // Toggle visible credential cards
   document.getElementById('live-api-settings').style.display = sandbox ? 'none' : 'flex';
@@ -70,7 +73,8 @@ function loadConfiguration() {
     sandboxMode: sandbox,
     clientId: clientId,
     apiKey: apiKey,
-    accessToken: token
+    accessToken: token,
+    targetFolder: targetFolder
   });
 
   updateConnectionStatusUI();
@@ -209,6 +213,10 @@ function navigateToView(viewId) {
   } else if (viewId === 'settings') {
     headerTitle.textContent = 'Settings & APIs';
     headerSubtitle.textContent = 'Configure sandbox scopes, local files, and secure Google keys';
+  } else if (viewId === 'folder-view') {
+    headerTitle.textContent = 'Drive Folder';
+    headerSubtitle.textContent = 'View and inspect PDF documents inside the connected Google Drive folder';
+    renderFolderViewScreen();
   }
 }
 
@@ -394,6 +402,74 @@ function registerWorkbenchHandlers() {
     
     renderWorkbenchCaseDetails();
   });
+
+  // Submit Semantic Retriever Event Handler
+  document.getElementById('retriever-submit-btn').addEventListener('click', async () => {
+    const promptInput = document.getElementById('retriever-prompt-input');
+    const promptText = promptInput.value.trim();
+
+    if (!promptText) {
+      ui.showToast('Please enter a search prompt or select one of the suggestions.', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('retriever-submit-btn');
+    const consoleBox = document.getElementById('retriever-console-box');
+    const consoleLog = document.getElementById('retriever-console-log');
+
+    btn.disabled = true;
+    consoleBox.style.display = 'flex';
+    consoleLog.innerHTML = '';
+
+    const addLogLine = (text, type = 'info') => {
+      const line = document.createElement('div');
+      line.className = `terminal-log-line ${type}`;
+      
+      const prefix = document.createElement('span');
+      prefix.className = 'terminal-prefix';
+      prefix.textContent = '>';
+      
+      const content = document.createElement('span');
+      content.textContent = text;
+      
+      line.appendChild(prefix);
+      line.appendChild(content);
+      
+      consoleLog.appendChild(line);
+      consoleLog.scrollTop = consoleLog.scrollHeight;
+    };
+
+    try {
+      // 1. Fetch all candidate files in the configured folder
+      addLogLine(`Connecting to GDrive Folder: "${drive.targetFolder || 'root'}"...`, 'system');
+      const files = await drive.listAllFilesInFolder(drive.targetFolder);
+
+      // 2. Call semantic matcher
+      const matches = await processor.autoRetrieveAndAssign(
+        state.activeCaseId,
+        drive.targetFolder || 'root',
+        promptText,
+        files,
+        (text, type) => {
+          addLogLine(text, type);
+        }
+      );
+
+      if (matches.length > 0) {
+        ui.showToast(`Successfully linked ${matches.length} documents!`, 'success');
+      } else {
+        ui.showToast(`Retrieval complete, but no matching documents were found.`, 'warning');
+      }
+
+      // 3. Re-render workbench sidebar & cases to show newly linked files
+      renderWorkbenchCaseDetails();
+    } catch (err) {
+      addLogLine(`Error during retrieval execution: ${err.message}`, 'error');
+      ui.showToast(`Semantic Retriever failed: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 function activateKycCase(caseId) {
@@ -458,6 +534,18 @@ function renderWorkbenchCaseDetails() {
   if (!state.activeSlotId) {
     emptyPanel.style.display = 'flex';
     editorPanel.style.display = 'none';
+
+    // Toggle case-specific retriever dashboard vs blank state
+    const noCaseState = document.getElementById('wb-empty-no-case');
+    const withCaseState = document.getElementById('wb-empty-with-case');
+    if (kycCase) {
+      noCaseState.style.display = 'none';
+      withCaseState.style.display = 'flex';
+      renderAutoRetrieverDashboard();
+    } else {
+      noCaseState.style.display = 'flex';
+      withCaseState.style.display = 'none';
+    }
   } else {
     emptyPanel.style.display = 'none';
     editorPanel.style.display = 'flex';
@@ -535,6 +623,45 @@ function renderWorkbenchCaseDetails() {
   }
 }
 
+/**
+ * Renders the AI Auto-Retriever dashboard with dynamic folder references
+ * and recommended natural language prompts matching the active case.
+ */
+function renderAutoRetrieverDashboard() {
+  const kycCase = processor.getCase(state.activeCaseId);
+  if (!kycCase) return;
+
+  // 1. Update Folder Pill label
+  const folderLabel = document.getElementById('retriever-folder-label');
+  folderLabel.textContent = `Folder: ${drive.targetFolder || 'root'}`;
+
+  // 2. Render Suggested Prompt Pills based on case requirements
+  const suggestionsList = document.getElementById('wb-prompt-suggestions');
+  suggestionsList.innerHTML = '';
+
+  const customerName = kycCase.name;
+  const suggestions = [];
+
+  if (kycCase.id === 'case-1042') {
+    suggestions.push(`Retrieve ${customerName}'s passport & power statement`);
+    suggestions.push(`Search for identity ID and utility statement in ${drive.targetFolder || 'folder'}`);
+  } else {
+    suggestions.push(`Find enhanced files: ID, electricity bill, and paystub for ${customerName}`);
+    suggestions.push(`Assign standard passport, lease agreement & salary payslip for ${customerName}`);
+  }
+
+  suggestions.forEach(ptext => {
+    const pill = document.createElement('span');
+    pill.className = 'prompt-pill';
+    pill.textContent = ptext;
+    pill.addEventListener('click', () => {
+      document.getElementById('retriever-prompt-input').value = ptext;
+      ui.showToast('Prompt suggestion selected!', 'info');
+    });
+    suggestionsList.appendChild(pill);
+  });
+}
+
 // ==========================================================================
 // SETTINGS CONFIG HANDLERS
 // ==========================================================================
@@ -552,19 +679,22 @@ function registerSettingsHandlers() {
     const clientId = document.getElementById('settings-client-id').value.trim();
     const apiKey = document.getElementById('settings-api-key').value.trim();
     const token = document.getElementById('settings-access-token').value.trim();
+    const targetFolder = document.getElementById('settings-target-folder').value.trim() || 'root';
 
     // Persist local settings
     localStorage.setItem('vd_sandbox', sandbox);
     localStorage.setItem('vd_client_id', clientId);
     localStorage.setItem('vd_api_key', apiKey);
     localStorage.setItem('vd_access_token', token);
+    localStorage.setItem('vd_target_folder', targetFolder);
 
     // Apply instances
     drive.configure({
       sandboxMode: sandbox,
       clientId: clientId,
       apiKey: apiKey,
-      accessToken: token
+      accessToken: token,
+      targetFolder: targetFolder
     });
 
     updateConnectionStatusUI();
@@ -774,4 +904,179 @@ function renderReportsOutput() {
   const mdReport = processor.generateComplianceReport(caseId);
   reportBox.textContent = mdReport;
   controls.style.display = 'flex';
+}
+
+/**
+ * Register actions for the Drive Folder page view.
+ */
+function registerFolderViewHandlers() {
+  document.getElementById('folder-view-refresh-btn').addEventListener('click', () => {
+    ui.showToast('Scanning Drive folder for updates...', 'info');
+    renderFolderViewScreen();
+  });
+}
+
+/**
+ * Queries the active connected folder recursively (or directly) and renders
+ * a premium grid containing all detected PDF documents, complete with mapping badges
+ * and expandable AI OCR inspectors.
+ */
+async function renderFolderViewScreen() {
+  const loading = document.getElementById('folder-view-loading');
+  const empty = document.getElementById('folder-view-empty');
+  const grid = document.getElementById('folder-files-list-grid');
+
+  loading.style.display = 'block';
+  empty.style.display = 'none';
+  grid.style.display = 'none';
+  grid.innerHTML = '';
+
+  const targetFolder = drive.targetFolder || 'root';
+  
+  // Update header descriptions
+  const title = document.getElementById('folder-view-title');
+  const subtitle = document.getElementById('folder-view-subtitle');
+  title.textContent = `Drive Folder: "${targetFolder}"`;
+  subtitle.textContent = `Displaying scanned PDF documents detected inside active target: "${targetFolder}"`;
+
+  try {
+    const files = await drive.listAllFilesInFolder(targetFolder);
+    loading.style.display = 'none';
+
+    if (!files || files.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    grid.style.display = 'grid';
+
+    // Map existing slot links to highlight connection profiles
+    const allCases = processor.getCases();
+    const mappedFileMap = {};
+    allCases.forEach(c => {
+      Object.values(c.slots).forEach(slot => {
+        if (slot.file) {
+          mappedFileMap[slot.file.id] = {
+            caseName: c.name,
+            slotName: slot.name
+          };
+        }
+      });
+    });
+
+    files.forEach(file => {
+      const card = document.createElement('div');
+      card.className = 'folder-file-card';
+
+      const mapping = mappedFileMap[file.id];
+      let badgeHTML = '';
+      if (mapping) {
+        badgeHTML = `<span class="folder-file-badge mapped">Mapped: ${mapping.caseName} (${mapping.slotName})</span>`;
+      } else {
+        badgeHTML = `<span class="folder-file-badge unmapped">Unmapped</span>`;
+      }
+
+      card.innerHTML = `
+        <div class="folder-file-header">
+          <div class="folder-file-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="folder-file-details">
+            <span class="folder-file-name" title="${file.name}">${file.name}</span>
+            <span class="folder-file-meta">${(file.size / 1024 / 1024).toFixed(2)} MB • Mapped: ${file.docType}</span>
+          </div>
+        </div>
+
+        <div class="folder-file-badges">
+          ${badgeHTML}
+        </div>
+
+        <div class="folder-file-ocr-drawer" id="ocr-drawer-${file.id}" style="display: none;">
+          <!-- Filled dynamically -->
+        </div>
+
+        <div class="folder-file-actions">
+          <a class="btn btn-secondary folder-file-btn" href="${file.webViewLink || '#'}" target="_blank" style="text-decoration: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            Open File
+          </a>
+          <button class="btn btn-primary folder-file-btn" id="ocr-toggle-btn-${file.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Inspect OCR
+          </button>
+        </div>
+      `;
+
+      grid.appendChild(card);
+
+      const inspectBtn = card.querySelector(`#ocr-toggle-btn-${file.id}`);
+      const drawer = card.querySelector(`#ocr-drawer-${file.id}`);
+
+      inspectBtn.addEventListener('click', () => {
+        if (drawer.style.display === 'none') {
+          drawer.innerHTML = '';
+          const ocr = file.visualData || {};
+          
+          if (Object.keys(ocr).length === 0) {
+            drawer.innerHTML = `<div style="font-style:italic; color:#94a3b8;">No parsed metadata records found.</div>`;
+          } else {
+            Object.entries(ocr).forEach(([key, val]) => {
+              if (typeof val === 'string' && val.length < 80) {
+                const line = document.createElement('div');
+                line.className = 'ocr-field-line';
+                line.innerHTML = `
+                  <span class="ocr-field-label">${key}</span>
+                  <span class="ocr-field-value" title="${val}">${val}</span>
+                `;
+                drawer.appendChild(line);
+              }
+            });
+          }
+
+          drawer.style.display = 'flex';
+          inspectBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+              <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+              <path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+              <line x1="2" y1="2" x2="22" y2="22"/>
+            </svg>
+            Hide Details
+          `;
+          inspectBtn.classList.replace('btn-primary', 'btn-secondary');
+        } else {
+          drawer.style.display = 'none';
+          inspectBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Inspect OCR
+          </button>
+          `;
+          inspectBtn.classList.replace('btn-secondary', 'btn-primary');
+        }
+      });
+    });
+
+  } catch (err) {
+    loading.style.display = 'none';
+    empty.style.display = 'block';
+    empty.querySelector('h3').textContent = 'Drive Connection Error';
+    empty.querySelector('p').textContent = `Could not scan directory records: ${err.message}`;
+    ui.showToast(`Folder scan failed: ${err.message}`, 'error');
+  }
 }

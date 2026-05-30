@@ -52,6 +52,13 @@
           KYC Reports
         </div>
         
+        <div class="nav-item" data-target="folder-view">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Drive Folder
+        </div>
+
         <div class="nav-item" data-target="settings">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/>
@@ -215,7 +222,8 @@
           
           <!-- Right main processor workbench -->
           <div class="workbench-main-panel" id="workbench-empty-panel">
-            <div class="workbench-empty-state">
+            <!-- State A: Case is not selected -->
+            <div class="workbench-empty-state" id="wb-empty-no-case">
               <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                 <line x1="9" y1="9" x2="15" y2="9"/>
@@ -224,6 +232,61 @@
               </svg>
               <h3>Select a slot to start</h3>
               <p>Choose a required document from the left list to review, assign, or edit verification details.</p>
+            </div>
+
+            <!-- State B: Case is active, but no slot is selected yet (Auto-Retriever dashboard) -->
+            <div id="wb-empty-with-case" style="display: none; flex-direction: column; gap: 20px; width: 100%;">
+              <div class="workbench-detail-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 8px;">
+                <div>
+                  <div class="slot-detail-title">🤖 AI Semantic File Retriever</div>
+                  <div class="slot-detail-desc">Retrieve and link customer documents automatically from Google Drive based on a natural language prompt.</div>
+                </div>
+                <div class="connection-pill connected" id="retriever-folder-status" style="margin-left: auto; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2);">
+                  <div class="connection-dot" style="background: var(--color-primary);"></div>
+                  <span id="retriever-folder-label" style="color: var(--text-secondary); font-size: 12px; font-weight: 500;">Folder: root</span>
+                </div>
+              </div>
+
+              <div class="retriever-form-container" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="settings-group">
+                  <label class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span>Enter Retrieval Prompt</span>
+                    <span style="font-size: 11px; opacity: 0.6; font-weight: normal;" id="retriever-char-limit">Describe the search instruction</span>
+                  </label>
+                  <textarea class="form-input" id="retriever-prompt-input" rows="3" placeholder="Describe the customer's documents to pull... (e.g., 'Find John Doe's photo ID and electricity statement in the folder')" style="resize: none;"></textarea>
+                </div>
+
+                <div class="prompt-suggestions-container">
+                  <span class="form-label" style="font-size: 12px; margin-bottom: 8px; display: block;">Suggested Prompts for this Case:</span>
+                  <div class="prompt-suggestions-list" id="wb-prompt-suggestions" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <!-- Suggested prompt pills will be rendered dynamically -->
+                  </div>
+                </div>
+
+                <button class="btn btn-primary btn-icon" id="retriever-submit-btn" style="width: 100%; margin-top: 10px; justify-content: center; height: 42px; font-weight: 600;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                  </svg>
+                  Auto-Retrieve & Assign Documents
+                </button>
+              </div>
+
+              <!-- Monospaced AI Terminal Console Output -->
+              <div class="terminal-console-container" id="retriever-console-box" style="display: none;">
+                <div class="terminal-header">
+                  <div class="terminal-dots">
+                    <span class="dot-red"></span>
+                    <span class="dot-yellow"></span>
+                    <span class="dot-green"></span>
+                  </div>
+                  <div class="terminal-title">KYC Agent AI Retriever Engine Console</div>
+                </div>
+                <div class="terminal-body" id="retriever-console-log">
+                  <!-- Realtime styled console logs print here -->
+                </div>
+              </div>
             </div>
           </div>
           
@@ -360,6 +423,42 @@
       </section>
 
       <!-- ==========================================
+           PAGE VIEW: DRIVE FOLDER VIEW
+           ========================================== -->
+      <section class="page-view" id="view-folder-view">
+        <div class="section-card" style="width: 100%;">
+          <div class="section-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <h2 class="section-title" id="folder-view-title">Drive Folder Files</h2>
+              <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;" id="folder-view-subtitle">Scanning connected Google Drive folder...</p>
+            </div>
+            <button class="btn btn-secondary" id="folder-view-refresh-btn" style="height: 38px; display: flex; align-items: center;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              Refresh Files
+            </button>
+          </div>
+
+          <div class="folder-view-container">
+            <div id="folder-view-loading" style="text-align: center; padding: 60px; color: var(--text-muted);">
+              <p style="font-size: 15px;">Scanning connected Google Drive folder...</p>
+            </div>
+            <div id="folder-view-empty" style="display: none; text-align: center; padding: 60px; color: var(--text-muted);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5; margin-bottom: 16px; color: var(--color-warning);">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+              <h3 style="color: var(--text-primary); margin-bottom: 8px;">No Files Found</h3>
+              <p style="font-size: 13.5px;">No PDF files were detected in this folder. Make sure your target folder link/name is set correctly in Settings.</p>
+            </div>
+            <div class="folder-files-list-grid" id="folder-files-list-grid" style="display: none;">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==========================================
            PAGE VIEW: SETTINGS & CONFIGS
            ========================================== -->
       <section class="page-view" id="view-settings">
@@ -379,6 +478,12 @@
                 <input type="checkbox" id="settings-sandbox-toggle" checked>
                 <span class="switch-slider"></span>
               </label>
+            </div>
+
+            <div class="settings-group" style="margin-top: 10px;">
+              <label class="form-label" for="settings-target-folder">Target Google Drive Folder Link (URL), Name, or ID</label>
+              <input type="text" class="form-input" id="settings-target-folder" placeholder="e.g. https://drive.google.com/drive/folders/FOLDER_ID or 'Identity Documents'">
+              <span style="font-size: 11px; color: var(--text-muted);">Paste the Google Drive folder URL link, a direct folder ID, or a raw folder name containing client documents. The AI agent will automatically resolve the link and retrieve files from that specific folder.</span>
             </div>
             
             <div id="live-api-settings" style="display: none; flex-direction: column; gap: 20px;">

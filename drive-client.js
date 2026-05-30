@@ -171,6 +171,7 @@ class DriveClient {
     this.clientId = null;
     this.apiKey = null;
     this.tokenClient = null;
+    this.targetFolder = 'root';
   }
 
   /**
@@ -181,6 +182,7 @@ class DriveClient {
     if (config.accessToken !== undefined) this.accessToken = config.accessToken;
     if (config.clientId !== undefined) this.clientId = config.clientId;
     if (config.apiKey !== undefined) this.apiKey = config.apiKey;
+    if (config.targetFolder !== undefined) this.targetFolder = config.targetFolder;
   }
 
   /**
@@ -489,8 +491,137 @@ class DriveClient {
         address: '123 MAIN STREET, METROPOLIS, NY 10001',
         issueDate: '2026-01-31',
         employer: 'GLOBAL ENTERPRISES INC',
-        wages: '$95,400.00'
       };
     }
+  }
+
+  /**
+   * Parse target folder URL, returning the pure FOLDER_ID if matched, or the raw input.
+   */
+  extractFolderIdFromUrl(input) {
+    if (!input) return 'root';
+    const str = input.trim();
+    if (str.includes('drive.google.com')) {
+      const foldersMatch = str.match(/\/folders\/([a-zA-Z0-9-_]{15,})/);
+      if (foldersMatch && foldersMatch[1]) {
+        return foldersMatch[1];
+      }
+      const openMatch = str.match(/[?&]id=([a-zA-Z0-9-_]{15,})/);
+      if (openMatch && openMatch[1]) {
+        return openMatch[1];
+      }
+    }
+    return str;
+  }
+
+  /**
+   * Resolve a folder ID by folder Name. Supporting both Sandbox folders and Live GDrive folders.
+   */
+  async getFolderIdByName(folderName) {
+    const resolvedNameOrId = this.extractFolderIdFromUrl(folderName);
+
+    if (this.sandboxMode) {
+      if (!resolvedNameOrId || resolvedNameOrId.toLowerCase() === 'root') {
+        return 'root';
+      }
+      // Check if we have a folder with this name or ID
+      const folder = Object.values(SANDBOX_DRIVE.folders).find(
+        f => f.name.toLowerCase() === resolvedNameOrId.toLowerCase() || f.id.toLowerCase() === resolvedNameOrId.toLowerCase()
+      );
+      return folder ? folder.id : 'root';
+    }
+
+    if (!resolvedNameOrId || resolvedNameOrId.toLowerCase() === 'root') {
+      return 'root';
+    }
+
+    const token = this.accessToken;
+    if (!token) throw new Error('Authentication required: Google OAuth session is not connected.');
+
+    // If it is a direct alphanumeric folder ID (usually 25-33 chars for Google Drive folders)
+    if (resolvedNameOrId.match(/^[a-zA-Z0-9-_]{15,}$/)) {
+      return resolvedNameOrId;
+    }
+
+    // Step 1: Query by exact name & folder mimetype if it looks like a folder name
+    const q = `name = '${resolvedNameOrId.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&key=${this.apiKey || ''}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+      if (!response.ok) return 'root';
+      const data = await response.json();
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+    } catch (e) {
+      console.warn('Error resolving folder ID by name, using root:', e);
+    }
+    return 'root'; // Fallback
+  }
+
+  /**
+   * Fetch all PDF files inside a specific folder ID or Name.
+   */
+  async listAllFilesInFolder(folderNameOrId) {
+    const resolvedFolderId = await this.getFolderIdByName(folderNameOrId);
+    
+    if (this.sandboxMode) {
+      const folder = SANDBOX_DRIVE.folders[resolvedFolderId] || SANDBOX_DRIVE.folders['root'];
+      let resultItems = [];
+      
+      const collectFiles = (fId) => {
+        const currentFolder = SANDBOX_DRIVE.folders[fId];
+        if (!currentFolder) return;
+        
+        currentFolder.children.forEach(childId => {
+          if (SANDBOX_DRIVE.folders[childId]) {
+            const subFolder = SANDBOX_DRIVE.folders[childId];
+            subFolder.children.forEach(subChildId => {
+              if (SANDBOX_DRIVE.files[subChildId]) {
+                const file = SANDBOX_DRIVE.files[subChildId];
+                if (!resultItems.some(item => item.id === file.id)) {
+                  resultItems.push(file);
+                }
+              }
+            });
+          } else if (SANDBOX_DRIVE.files[childId]) {
+            const file = SANDBOX_DRIVE.files[childId];
+            if (!resultItems.some(item => item.id === file.id)) {
+              resultItems.push(file);
+            }
+          }
+        });
+      };
+      
+      collectFiles(resolvedFolderId);
+      return resultItems;
+    }
+
+    // Live mode API query
+    const token = this.accessToken;
+    if (!token) throw new Error('Authentication required: Access Token not found.');
+
+    const q = `'${resolvedFolderId}' in parents and mimeType = 'application/pdf' and trashed = false`;
+    const fields = 'files(id, name, mimeType, size, modifiedTime, webViewLink)';
+    const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&key=${this.apiKey || ''}`;
+
+    const response = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+    });
+    if (!response.ok) {
+      throw new Error(`Drive API responded with HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    
+    // Retrieve full OCR profiles on all matched files
+    const fileObjects = [];
+    for (const f of (data.files || [])) {
+      const fullFile = await this.getFile(f.id);
+      fileObjects.push(fullFile);
+    }
+    return fileObjects;
   }
 }

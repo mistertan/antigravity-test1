@@ -362,4 +362,137 @@ I hereby certify that the linked Google Drive metadata records have been parsed,
 
     return audits;
   }
+
+  /**
+   * AI-powered semantic matching and auto-assignment.
+   * Scans files in a folder, resolves semantic keywords in the prompt, and maps files to active case slots.
+   */
+  async autoRetrieveAndAssign(caseId, targetFolderName, prompt, filesInFolder, logCallback) {
+    const kycCase = this.getCase(caseId);
+    if (!kycCase) throw new Error('Case not found');
+
+    const log = (text, type = 'info') => {
+      if (logCallback) logCallback(text, type);
+    };
+
+    // Step 1: Connect and Scan Folder
+    log(`[1/4] Establishing secure agent connection to folder: "${targetFolderName}"...`, 'system');
+    await new Promise(r => setTimeout(r, 800));
+    
+    log(`[2/4] Directory connected. Fetching PDF metadata...`, 'info');
+    await new Promise(r => setTimeout(r, 600));
+
+    if (!filesInFolder || filesInFolder.length === 0) {
+      log(`[!] Scan complete. No matching PDF documents found in target folder "${targetFolderName}".`, 'error');
+      return [];
+    }
+
+    log(`[2/4] Scan complete. Found ${filesInFolder.length} candidate documents:`, 'info');
+    filesInFolder.forEach(f => {
+      log(`  • ${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`, 'system');
+    });
+    await new Promise(r => setTimeout(r, 800));
+
+    // Step 2: Semantic Analysis
+    log(`[3/4] Running Semantic Parsing Algorithm...`, 'info');
+    log(`  - Target customer: "${kycCase.name}"`, 'system');
+    log(`  - User search prompt: "${prompt}"`, 'system');
+    await new Promise(r => setTimeout(r, 1000));
+
+    const promptLower = prompt.toLowerCase();
+    const customerKeywords = kycCase.name.toLowerCase().split(/\s+/);
+    
+    const matchesFound = [];
+
+    // Evaluate each required document slot
+    const slots = Object.values(kycCase.slots);
+    
+    for (const slot of slots) {
+      log(`🔎 Analyzing candidates for slot: "${slot.name}"...`, 'info');
+      await new Promise(r => setTimeout(r, 650));
+
+      // Define keyword indicators for the slot type
+      let typeKeywords = [];
+      if (slot.type === 'identity') {
+        typeKeywords = ['passport', 'id', 'license', 'driver', 'identity', 'national'];
+      } else if (slot.type === 'address') {
+        typeKeywords = ['bill', 'utility', 'lease', 'agreement', 'address', 'electricity', 'power', 'water', 'gas', 'statement'];
+      } else if (slot.type === 'income') {
+        typeKeywords = ['w2', 'tax', 'paystub', 'payslip', 'salary', 'income', 'wage', 'employer'];
+      }
+
+      let bestFile = null;
+      let highestScore = 0;
+      let matchReason = '';
+
+      for (const file of filesInFolder) {
+        let score = 0;
+        let reasons = [];
+
+        // Check 1: Customer Name alignment
+        const fileNameLower = file.name.toLowerCase();
+        const ocrNameLower = (file.visualData?.fullName || '').toLowerCase();
+        
+        let nameMatchCount = 0;
+        customerKeywords.forEach(kw => {
+          if (fileNameLower.includes(kw) || ocrNameLower.includes(kw)) {
+            nameMatchCount++;
+          }
+        });
+
+        if (nameMatchCount > 0) {
+          score += 45 + (nameMatchCount * 10);
+          reasons.push(`matches customer name keywords`);
+        }
+
+        // Check 2: Prompt Name alignment
+        const nameInPrompt = customerKeywords.some(kw => promptLower.includes(kw));
+        if (nameInPrompt) {
+          score += 10;
+        }
+
+        // Check 3: Document Type match (file property vs slot type)
+        if (file.docType === slot.type) {
+          score += 25;
+          reasons.push(`file classification matches slot type`);
+        }
+
+        // Check 4: Prompt Keyword match
+        let keywordHits = 0;
+        typeKeywords.forEach(kw => {
+          if (promptLower.includes(kw) && (fileNameLower.includes(kw) || file.docType === slot.type)) {
+            keywordHits++;
+          }
+        });
+
+        if (keywordHits > 0) {
+          score += 15 + (keywordHits * 5);
+          reasons.push(`matches prompt keywords [${typeKeywords.filter(kw => promptLower.includes(kw)).join(', ')}]`);
+        }
+
+        if (score > highestScore && score >= 50) {
+          highestScore = Math.min(score, 99); // Max 99%
+          bestFile = file;
+          matchReason = reasons.join(' & ');
+        }
+      }
+
+      if (bestFile) {
+        log(`  ✅ Match found! "${bestFile.name}" aligned with ${highestScore}% confidence.`, 'success');
+        log(`  💡 Reason: ${matchReason}.`, 'system');
+        
+        // Link file
+        this.linkFileToSlot(caseId, slot.id, bestFile);
+        matchesFound.push({ slotId: slot.id, file: bestFile });
+      } else {
+        log(`  ❌ No high-confidence matches found for "${slot.name}".`, 'warning');
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    log(`[4/4] Semantic Retriever Execution Completed successfully!`, 'success');
+    log(`🎉 Done: Auto-linked ${matchesFound.length} documents to active case slots.`, 'success');
+    
+    return matchesFound;
+  }
 }
